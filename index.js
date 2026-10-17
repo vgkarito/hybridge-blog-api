@@ -93,7 +93,9 @@ app.get('/api/posts', async (req, res) => {
 });
 
 // POST - Crear un nuevo post
-app.post('/api/posts', async (req, res) => {
+app.post('/api/posts',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
   const { title, content, author } = req.body;
 
   if (!title || !content || !author) {
@@ -105,27 +107,34 @@ app.post('/api/posts', async (req, res) => {
 });
 
 // DELETE - Eliminar un post por ID
-app.delete('/api/posts/:id', async (req, res) => {
-  const { id } = req.params;
-  const post = await db.Post.findByPk(id);
+app.delete('/api/posts/:id',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const { id } = req.params;
+    const post = await db.Post.findByPk(id);
 
-  if (!post) {
-    return res.status(404).json({ error: 'Publicación no encontrada' });
+    if (!post) {
+      return res.status(404).json({ error: 'Publicación no encontrada' });
+    }
+
+    await post.destroy();
+    res.status(204).send();
   }
+);
 
-  await post.destroy();
-  res.status(204).send();
-});
-// POST - Crear un autor
-app.post('/api/authors', async (req, res) => {
-  const { name } = req.body;
-  const author = await db.Author.create({ name });
-  res.status(201).json(author);
-});
+// POST - Crear un autor (requiere token)
+app.post('/api/authors',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const { name } = req.body;
+    const author = await db.Author.create({ name });
+    res.status(201).json(author);
+  }
+);
 // GET - Obtener un post por ID
 app.get('/api/posts/:id', async (req, res) => {
-  const { id } = req.params;
-  const post = await db.Post.findByPk(id);
+    const { id } = req.params;
+    const post = await db.Post.findByPk(id);
 
   if (!post) {
     return res.status(404).json({ error: 'Publicación no encontrada' });
@@ -135,7 +144,9 @@ app.get('/api/posts/:id', async (req, res) => {
 });
 
 // PATCH - Actualizar un post por ID
-app.patch('/api/posts/:id', async (req, res) => {
+app.patch('/api/posts/:id',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
   const { id } = req.params;
   const { title, content } = req.body;
   const post = await db.Post.findByPk(id);
@@ -149,6 +160,39 @@ app.patch('/api/posts/:id', async (req, res) => {
   await post.save();
   res.json(post);
 });
+// PATCH - Actualizar un autor por ID (requiere token)
+app.patch('/api/authors/:id',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const { id } = req.params;
+    const author = await db.Author.findByPk(id);
+
+    if (!author) {
+      return res.status(404).json({ error: 'Autor no encontrado' });
+    }
+
+    author.name = req.body.name ?? author.name;
+    await author.save();
+    res.json(author);
+  }
+);
+
+// DELETE - Eliminar un autor por ID (requiere token)
+app.delete('/api/authors/:id',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    const { id } = req.params;
+    const author = await db.Author.findByPk(id);
+
+    if (!author) {
+      return res.status(404).json({ error: 'Autor no encontrado' });
+    }
+
+    await author.destroy();
+    res.status(204).send();
+  }
+);
+
 // Iniciar el servidor
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
